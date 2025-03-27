@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Birthday, AARATI!</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a043c;
+            color: #FFD700;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        #countdown {
+            font-size: 3rem;
+            margin: 20px 0;
+            letter-spacing: 2px;
+        }
+        #wait-text {
+            font-size: 1.2rem;
+            color: #FFD700;
+            margin-top: 10px;
+        }
+        #message {
+            font-size: 1.2rem;
+            max-width: 600px;
+            margin: 20px auto;
+            display: none;
+            text-align: left;
+            line-height: 1.6;
+            padding: 0 20px;
+            position: relative;
+            z-index: 10;
+        }
+        #morse-button {
+            background: transparent;
+            border: 1px solid #FFD700;
+            color: #FFD700;
+            padding: 10px 20px;
+            margin: 20px auto;
+            cursor: pointer;
+            display: none;
+            font-size: 1rem;
+            position: relative;
+            z-index: 10;
+        }
+        #morse-code {
+            display: none;
+            font-family: monospace;
+            white-space: pre-wrap;
+            margin: 20px auto;
+            max-width: 600px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            position: relative;
+            z-index: 10;
+        }
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite alternate;
+            z-index: 1;
+        }
+        @keyframes twinkle {
+            0% { opacity: 0.1; }
+            100% { opacity: 0.5; }
+        }
+        .confetti {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            animation: fall 8s linear forwards;
+            z-index: 2;
+        }
+        @keyframes fall {
+            0% { 
+                transform: translateY(-10vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% { 
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        .balloon {
+            position: absolute;
+            width: 30px;
+            height: 40px;
+            border-radius: 50%;
+            animation: float 15s ease-in-out infinite;
+            z-index: 2;
+            opacity: 0.8;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-50px) rotate(5deg); }
+        }
+        #audio-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        #enable-audio {
+            padding: 15px 30px;
+            background: #FFD700;
+            color: #0a043c;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="audio-overlay">
+        <button id="enable-audio">TAP TO ENABLE SOUND</button>
+    </div>
+
+    <div id="countdown"></div>
+    <div id="wait-text">Wait till the countdown hits 00:00:00...</div>
+    <div id="message"></div>
+    <button id="morse-button">Click for a Hidden Message</button>
+    <div id="morse-code"></div>
+
+    <script>
+        // ===== CONFIGURATION ===== //
+        const BIRTHDAY_DATE = "2025-03-28T00:00:00+03:00"; // Cyprus Summer Time (EEST)
+        const MAIN_MESSAGE = `Hey AARATI,\n\nI know we haven't talked in a while, but today is a special day, and I couldn't just let it pass without wishing you. Happy Birthday! I genuinely hope this year brings you all the happiness, success, and prosperity you deserve.\n\nMay you always find reasons to smile, the strength to chase your dreams, and the right people who uplift and support you. No matter where life takes you, I hope you stay safe, healthy, and surrounded by love and positivity.\n\nEven though we may not be in touch, just know that I still wish the best for you, always. Enjoy your special day to the fullest, and may this year be even better than the last!\n\nTake care, and once again, Happy Birthday!`;
+        const MORSE_CODE = `.. / .-- .. ... .... / .. / -.-. --- ..- .-.. -.. / .... .- ...- . / -... . . -. / .- -... .-.. . / - --- / -. --- - / -.. --- / - .... --- ... . / - .... .. -. --. ... / --- .-. / ... .- -.-- / .-- .... .. -.-. .... / .. / -.. .. -.. --..-- / -... ..- - / .. - / .-- .- ... / -. . -.-. . ... ... .- .-. -.-- / -... . -.-. .- ..- ... . / --- ..-. / -- -.-- / ... .. - ..- .- - .. --- -. .-.-.- / .. / .- -- / .-. . .- .-.. .-.. -.-- / ... --- .-. .-. -.-- / .- -. -.. / .... --- .--. . / ..-. --- .-. / -.-- --- ..- .-. / -... . ... - / .- -. -.. / .- .-.. ... --- / --- ..- .-. / -... . ... - / .. -. / .- -. --- - .... . .-. / ..- -. .. ...- . .-. ... . / ❤️`;
+
+        // ===== ELEMENTS ===== //
+        const countdownEl = document.getElementById("countdown");
+        const waitTextEl = document.getElementById("wait-text");
+        const messageEl = document.getElementById("message");
+        const morseButtonEl = document.getElementById("morse-button");
+        const morseCodeEl = document.getElementById("morse-code");
+        const audioOverlay = document.getElementById("audio-overlay");
+        const enableAudioBtn = document.getElementById("enable-audio");
+
+        // ===== AUDIO ===== //
+        let audioEnabled = false;
+        const hornSound = new Audio("https://assets.mixkit.co/sfx/preview/mixkit-party-horn-712.mp3");
+        const cheerSound = new Audio("https://assets.mixkit.co/sfx/preview/mixkit-people-cheering-454.mp3");
+        const bgMusic = new Audio("https://assets.mixkit.co/music/preview/mixkit-happy-birthday-piano-loop-1088.mp3");
+        bgMusic.loop = true;
+        bgMusic.volume = 0.5;
+
+        // ===== COUNTDOWN ===== //
+        function updateCountdown() {
+            const now = new Date();
+            const birthday = new Date(BIRTHDAY_DATE);
+            const diff = birthday - now;
+
+            if (diff <= 0) {
+                countdownEl.textContent = "00:00:00";
+                waitTextEl.style.display = "none";
+                startCelebration();
+                return;
+            }
+
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            countdownEl.textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+        }
+
+        // ===== CELEBRATION ===== //
+        function startCelebration() {
+            // Clear old animations
+            document.querySelectorAll('.confetti, .balloon').forEach(el => el.remove());
+
+            // Show message
+            messageEl.style.display = "block";
+            typeWriter(MAIN_MESSAGE, messageEl);
+
+            // Show Morse button
+            morseButtonEl.style.display = "block";
+            morseButtonEl.addEventListener("click", () => {
+                morseCodeEl.style.display = "block";
+                morseCodeEl.textContent = MORSE_CODE;
+            });
+
+            // Play sounds if enabled
+            if (audioEnabled) {
+                hornSound.play().catch(e => console.log("Horn error:", e));
+                setTimeout(() => {
+                    cheerSound.play().catch(e => console.log("Cheer error:", e));
+                    bgMusic.play().catch(e => console.log("Music error:", e));
+                }, 500);
+            }
+
+            // Create controlled animations
+            createStars(30);  // Reduced number
+            createConfetti(40);  // Reduced number
+            createBalloons(10);  // Reduced number
+        }
+
+        // ===== ANIMATIONS ===== //
+        function createStars(count) {
+            for (let i = 0; i < count; i++) {
+                const star = document.createElement("div");
+                star.classList.add("star");
+                star.style.left = `${Math.random() * 100}vw`;
+                star.style.top = `${Math.random() * 100}vh`;
+                star.style.width = `${Math.random() * 2 + 1}px`;
+                star.style.height = star.style.width;
+                star.style.animationDelay = `${Math.random() * 3}s`;
+                document.body.appendChild(star);
+            }
+        }
+
+        function createConfetti(count) {
+            const colors = ["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff"];
+            for (let i = 0; i < count; i++) {
+                const confetti = document.createElement("div");
+                confetti.classList.add("confetti");
+                confetti.style.left = `${Math.random() * 100}vw`;
+                confetti.style.animationDuration = `${Math.random() * 5 + 3}s`;
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                document.body.appendChild(confetti);
+            }
+        }
+
+        function createBalloons(count) {
+            const colors = ["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff"];
+            for (let i = 0; i < count; i++) {
+                const balloon = document.createElement("div");
+                balloon.classList.add("balloon");
+                balloon.style.left = `${Math.random() * 100}vw`;
+                balloon.style.top = `${Math.random() * 100 + 100}vh`;
+                balloon.style.backgroundColor = colors[i % colors.length];
+                balloon.style.animationDuration = `${Math.random() * 10 + 5}s`;
+                document.body.appendChild(balloon);
+            }
+        }
+
+        function typeWriter(text, element) {
+            let i = 0;
+            element.textContent = "";
+            function typing() {
+                if (i < text.length) {
+                    element.textContent += text.charAt(i);
+                    i++;
+                    setTimeout(typing, 20);
+                }
+            }
+            typing();
+        }
+
+        // ===== AUDIO ENABLER ===== //
+        enableAudioBtn.addEventListener("click", () => {
+            audioEnabled = true;
+            audioOverlay.style.display = "none";
+            // Required for mobile browsers
+            document.body.addEventListener("click", () => {
+                bgMusic.play().then(() => {
+                    bgMusic.pause();
+                    bgMusic.currentTime = 0;
+                });
+            }, { once: true });
+        });
+
+        // ===== INITIALIZE ===== //
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+    </script>
+</body>
+</html>
